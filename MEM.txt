@@ -1,0 +1,66 @@
+/*
+ * Virtual memory map:                                Permissions
+ *                                                    kernel/user
+ *    4 GB --------->  +------------------------------+
+ * 					   |      Invalid Memory (*)	  |  PAGE_SIZE
+ * KERNEL_HEAP_MAX ->  +------------------------------+
+ *                     |     Kernel Heap (KHEAP)      | RW/--
+ *                     :              .               :
+ *                     :              .               :
+ *KERNEL_HEAP_START -> +------------------------------+ 0xf6000000
+ *                     :              .               :
+ *                     :              .               :
+ *                     |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~| RW/--
+ *                     |                              | RW/--
+ *                     |   Remapped Physical Memory   | RW/--
+ *                     |                              | RW/--
+ *    KERNEL_BASE -->  +------------------------------+ 0xf0000000
+ *                     |  Cur. Page Table (Kern. RW)  | RW/--  PTSIZE
+ * VPT,       -------> +------------------------------+ 0xefc00000      --+
+ * KERNEL_STACK_TOP    |         Kernel Stack         | RW/--  KERNEL_STACK_SIZE   |
+ *                     | - - - - - - - - - - - - - - -|                 PTSIZE
+ *                     |      Invalid Memory (*)      | --/--             |
+ * USER_LIMIT  ------> +------------------------------+ 0xef800000      --+
+ *                     |  Cur. Page Table (User R-)   | R-/R-  	PTSIZE
+ *    UVPT      ---->  +------------------------------+ 0xef400000
+ *                     |   		  FREE Space	      | 		PTSIZE
+ *					   +------------------------------+ 0xef000000
+ *                     |           RO ENVS            | R-/R-  PTSIZE
+ * USER_TOP,UENVS -->  +------------------------------+ 0xeec00000
+ * UXSTACKTOP -/       |     User Exception Stack     | RW/RW  PAGE_SIZE
+ *                     +------------------------------+ 0xeebff000
+ *                     |       Empty Memory (*)       | --/--  PAGE_SIZE
+ *    USTACKTOP  --->  +------------------------------+ 0xeebfe000
+ *                     |      Normal User Stack       | RW/RW  PAGE_SIZE
+ *                     +------------------------------+ 0xeebfd000
+ *                     .                              .
+ *                     .                              .
+ *                     .                              .
+ * USTACKBOTTOM, -->   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ * USER_PAGES_WS_MAX   |      					 	  |
+ *    				   | User Pages Working Set (Read)|
+ * USER_HEAP_MAX,-->   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 0xA0000000 [Original Value 0xC0000000]
+ * USER_PAGES_WS_START .                              .
+ *                     .                              .
+ *                     .    		User Heap         .
+ * USER_HEAP_START-->  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~	0x80000000
+ *                     .                              .
+ *                     .                              .
+ *                     .                              .
+ *                     |     Program Code & Data 	  |
+ *    UTEXT -------->  +------------------------------+ 0x00800000
+ *    PFTEMP ------->  |       Empty Memory (*)       |        PTSIZE
+ *                     |                              |
+ *    UTEMP -------->  +------------------------------+ 0x00400000      --+
+ *                     |       Empty Memory (*)       |                   |
+ *                     | - - - - - - - - - - - - - - -|                   |
+ *                     |  User STAB Data (optional)   |                 PTSIZE
+ *    USTABDATA ---->  +------------------------------+ 0x00200000        |
+ *                     |       Empty Memory (*)       |                   |
+ *    0 ------------>  +------------------------------+                 --+
+ *
+ * (*) Note: The kernel ensures that "Invalid Memory" (USER_LIMIT) is *never*
+ *     mapped.  "Empty Memory" is normally unmapped, but user programs may
+ *     map pages there if desired.  FOS user programs map pages temporarily
+ *     at UTEMP.
+ */
